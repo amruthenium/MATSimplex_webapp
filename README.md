@@ -1,4 +1,4 @@
-# MATSimplex — deployable web app
+# MATSimplex: deployable web app
 
 Harmonises MATSim output (network, plans, events) into a Simplex4Data-importable
 layer bundle **and** a TwIS RDF graph, then answers cross-layer analytical queries.
@@ -28,9 +28,6 @@ python app.py                      # http://localhost:5000
 ```bash
 gunicorn -w 2 -b 0.0.0.0:5000 app:app
 ```
-Put nginx/Apache in front for TLS and static serving. Increase upload limits in the
-proxy to match `MAX_CONTENT_LENGTH` in `app.py` (default 4 GB).
-
 ## API
 - `POST /api/convert`  — multipart: `network`, `plans`, `events` files + `bbox` field
    (`LON_MIN,LON_MAX,LAT_MIN,LAT_MAX`). Returns `{job, summary, files}`.
@@ -67,8 +64,7 @@ python matsim_to_s4d.py --network net.xml.gz --plans plans.xml.gz --events event
 ```
 
 ## Notes
-- The four demonstration queries (busiest links, busiest intersections, route
-  popularity, delay × road class) are computed over the harmonised bundle and prove
+- The four demonstration queries (busiest links, busiest intersections, route popularity, delay × road class) are computed over the harmonised bundle and prove
   cross-layer harmonisation (e.g. delay×class needs *events* realised time + *network*
   free-flow speed + road class together).
 - For very large inputs, pass a `bbox` to clip to a district.
