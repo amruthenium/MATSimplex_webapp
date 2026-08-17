@@ -1,9 +1,15 @@
 # MATSimplex: deployable web app
 
-Harmonises MATSim output (network, plans, events) into a Simplex4Data-importable
-layer bundle **and** a TwIS RDF graph, then answers cross-layer analytical queries.
-Unlike the single-file browser demo, **parsing runs server-side in Python**
-(`matsim_to_s4d.py`), so it is not limited by browser memory.
+All the scripts, mostly in Python but some in JavaScript, and HTML, used in my Master's thesis project at TUM and Simplex4Data GmbH. 
+
+What is this project about?
+Multi-Agent Transport Simulation (MATSim) is a leading open-source framework for microscopic, agent-based transport simulations. It is increasingly used in research and practice to support
+data-driven mobility and urban planning. In typical projects, MATSim output consists of large collections of XML, CSV and spatial files (events, trajectories, link statistics, accessibility indicators) that are tailored to the needs of transport modellers but difficult to interpret and reuse for non-experts such as planners, policy makers or stakeholders in other domains.
+This heterogeneity creates several challenges: outputs from different runs and scenarios are organised in ad hoc folder structures, indicators are computed using custom scripts, and there is no common semantic layer that would enable cross-scenario comparison, reproducible analysis pipelines, or integration with other urban data sources. At the same time, frameworks such as eqasim demonstrate how standardised, staged pipelines from raw data to MATSim scenarios improve reproducibility and transparency on the input side, but similar attention is rarely given to the
+systematic management of outputs.
+This thesis aims to design and prototype a reusable data management and harmonisation workflow for MATSim output data using the TwIS framework and its Simplex4Data data warehouse as a central, GraphDB-based store, complemented by a semantic transport and knowledge graph representation of key MATSim concepts (agents, activities, links, indicators). The overarching goal is to make MATSim results more accessible, queryable, and interpretable for both technical and non-technical users, while preserving provenance information to support reproducible, scenario-based analysis.
+
+Harmonises MATSim output (network, plans, events) into a Simplex4Data-importable layer bundle **and** a TwIS RDF graph, then answers cross-layer analytical queries.
 
 ## Structure
 ```
