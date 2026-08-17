@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MATSimplex: harmonise &amp; query MATSim output</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/d3@7"></script>
+<script src="https://unpkg.com/n3@1.17.2/browser/n3.min.js"></script>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c232d;--line:#2a3441;--ink:#e6edf3;--muted:#8b98a5;--accent:#4f9dff;--accent2:#31c48d;--warn:#f0a35e;--red:#f2665a;--chip:#233043;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  #top{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#141a22,#0e1116)}
+  #top .logo{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:17px solid var(--accent2)}
+  #top h1{font-size:18px;margin:0;font-weight:650}
+  #top .tag{color:var(--muted);font-size:13px}
+  #steps{display:flex;gap:6px;padding:12px 22px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto}
+  .step{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:9px;font-size:13.5px;color:var(--muted);cursor:pointer;white-space:nowrap;border:1px solid transparent}
+  .step .n{width:22px;height:22px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:12px}
+  .step.active{background:var(--panel2);color:var(--ink);border-color:var(--line)}
+  .step.active .n{background:var(--accent);color:#04101f;font-weight:700}
+  .step.done .n{background:var(--accent2);color:#04160f}
+  #wrap{padding:22px;max-width:1240px;margin:0 auto}
+  .view{display:none}.view.on{display:block}
+  h2{font-size:22px;margin:.2em 0 .1em}.sub{color:var(--muted);font-size:14px;margin-bottom:18px;max-width:74ch}
+  .grid2{display:grid;grid-template-columns:360px 1fr;gap:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:14px;margin:10px 0;background:var(--panel2)}
+  .drop.set{border-color:var(--accent2)} .drop h4{margin:0 0 4px;font-size:14px}.drop small{color:var(--muted)}
+  input[type=file]{font-size:12.5px;color:var(--muted);margin-top:8px;width:100%}
+  .btn{background:var(--accent);color:#04101f;border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.4;cursor:not-allowed}.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .btn.mini{padding:6px 11px;font-size:12.5px;border-radius:8px}
+  .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:12.5px;cursor:pointer;margin:4px 6px 4px 0}
+  .chip.on{background:var(--accent);color:#04101f;border-color:var(--accent);font-weight:600}
+  #map,#map2,#map3{height:520px;border-radius:12px;border:1px solid var(--line)}
+  #map3{height:480px}
+  .lab{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
+  .stat{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0}
+  .stat .b{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 15px;min-width:100px}
+  .stat .b .v{font-size:22px;font-weight:700;color:var(--accent)}.stat .b .k{font-size:11.5px;color:var(--muted)}
+  .qbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+  .qcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer}
+  .qcard:hover{border-color:var(--accent)}.qcard h4{margin:0 0 5px;font-size:14.5px}.qcard p{margin:0;font-size:12.5px;color:var(--muted)}
+  .qcard .x{font-size:11px;color:var(--accent2);margin-top:8px;display:block}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+  th{position:sticky;top:0;background:var(--panel2);text-align:left;padding:8px;border-bottom:1px solid var(--line);color:var(--muted)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line)}
+  .barcell{position:relative}.bar{position:absolute;left:0;top:0;bottom:0;background:rgba(79,157,255,.16);border-radius:3px}
+  .note{background:#16202b;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--muted);margin:12px 0}
+  .inp{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+  .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:var(--muted)}
+  .pbar{height:9px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:12px 0 4px}
+  #pfill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="top"><div class="logo"></div><h1>MATSimplex</h1>
+  <span class="tag">server-side harmonisation of MATSim network · plans · events → queryable graph</span></div>
+<div id="steps">
+  <div class="step active" data-s="0"><span class="n">1</span> Upload</div>
+  <div class="step" data-s="1"><span class="n">2</span> Choose area</div>
+  <div class="step" data-s="2"><span class="n">3</span> Harmonise</div>
+  <div class="step" data-s="3"><span class="n">4</span> Explore</div>
+  <div class="step" data-s="4"><span class="n">5</span> Query</div>
+  <div class="step" data-s="5"><span class="n">6</span> Graph</div>
+</div>
+<div id="wrap">
+  <!-- 1 UPLOAD -->
+  <div class="view on" id="v0">
+    <h2>1 · Load MATSim output</h2>
+    <div class="sub">Upload the three MATSim output files. They are sent to the server, which runs the Python converter — so large files are handled server-side, not in the browser. Network is required; plans enable route queries; events enable the delay query.</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="drop" id="d-net"><h4>Network <small>· output_network.xml</small></h4><small>nodes + links</small><input type="file" id="f-net" accept=".xml,.gz"></div>
+        <div class="drop" id="d-plan"><h4>Plans <small>· output_plans.xml</small></h4><small>persons, activities, routes</small><input type="file" id="f-plan" accept=".xml,.gz"></div>
+        <div class="drop" id="d-ev"><h4>Events <small>· output_events.xml</small></h4><small>timestamped events</small><input type="file" id="f-ev" accept=".xml,.gz"></div>
+        <button class="btn" onclick="go(1)">Next: choose area →</button>
+      </div>
+      <div class="card"><div class="lab">Pipeline</div>
+        <p class="muted" style="font-size:13.5px;line-height:1.6">Files → <b>server</b> parses &amp; clips to your district → harmonises into TwIS objects/connections/values → emits a GeoJSON+CSV bundle (S4D-importable) and a <code>graph.ttl</code> (GraphDB) → answers cross-layer queries. The demonstration queries join <i>network × plans × events</i> on shared link ids.</p>
+      </div>
+    </div>
+  </div>
+  <!-- 2 AREA -->
+  <div class="view" id="v1">
+    <h2>2 · Choose a district</h2>
+    <div class="sub">Pick a preset, click grid cells to build a custom area, or type a bbox. Clipping keeps it fast; the server only processes your district.</div>
+    <div class="grid2">
+      <div class="card"><div class="lab">Preset neighbourhoods</div><div id="presets"></div>
+        <div class="lab">Custom bbox (WGS84)</div>
+        <div class="flex"><input class="inp" id="bboxIn" placeholder="11.55,11.60,48.13,48.16" style="flex:1"><button class="btn mini" onclick="applyBboxInput()">Set</button></div>
+        <div class="note" id="areaInfo">No area selected — full extent will be used (may be large).</div>
+        <button class="btn" onclick="go(2)">Next: harmonise →</button>
+      </div>
+      <div class="card"><div id="map"></div>
+        <div class="muted" style="font-size:12px;margin-top:6px">Click cells to toggle; their bounding box becomes the clip area.</div></div>
+    </div>
+  </div>
+  <!-- 3 HARMONISE -->
+  <div class="view" id="v2">
+    <h2>3 · Harmonise &amp; convert</h2>
+    <div class="sub">Send the files to the server; it runs <code>matsim_to_s4d.py</code>, builds the graph, and returns a summary. This is where the browser-memory limit disappears.</div>
+    <div class="card">
+      <div class="flex"><button class="btn" id="runConv" onclick="harmonise()">▶ Run harmonisation (server)</button><span id="convStat" class="muted"></span></div>
+      <div class="pbar" id="pbar" style="display:none"><div id="pfill"></div></div>
+      <div class="stat" id="convStats"></div>
+      <div id="convDone" style="display:none">
+        <div class="lab">Download the harmonised outputs</div>
+        <div class="flex" id="dlLinks"></div>
+        <button class="btn" style="margin-top:14px" onclick="go(3)">Next: explore →</button>
+      </div>
+    </div>
+  </div>
+  <!-- 4 EXPLORE -->
+  <div class="view" id="v3">
+    <h2>4 · Explore the map</h2>
+    <div class="sub">The harmonised district, served from the backend as GeoJSON.</div>
+    <div class="grid2">
+      <div class="card"><div class="lab">Layers</div>
+        <label class="flex" style="margin:6px 0"><input type="checkbox" id="lyLinks" checked onchange="drawExplore()"> Links</label>
+        <label class="flex" style="margin:6px 0"><input type="checkbox" id="lyActs" checked onchange="drawExplore()"> Activities</label>
+        <div class="stat" id="exploreStats"></div>
+        <div class="lab">Temporal view: Activites by time of the day</div>
+        <div id="periodChips"></div>
+        <div class="flex" style="margin:10px 0 4px"><span class="muted" style="font-size:12px">Scrub 24h:</span></div>
+          <input type="range" id="tscrub" min="0" max="86340" step="300" value="43200" style="flex:1">
+          <span id="tclock" class="muted" style="font-size:12px;min-width:70px;text-align:right">12:00 · all</span></div>
+        <div id="tchart" style="margin:8px 0"></div>
+        <button class="btn mini ghost" onclick="clearTemporal()">Show all times</button>
+        <button class="btn" onclick="go(4)">Next: query →</button></div>
+      <div class="card"><div id="map2"></div></div>
+    </div>
+  </div>
+  <!-- 5 QUERY -->
+  <div class="view" id="v4">
+    <h2>5 · Query the knowledge graph</h2>
+    <div class="sub">Cross-layer analytical queries, computed on the server over the harmonised bundle. Each joins layers that live in different MATSim files — impossible on the raw XML without manual work.</div>
+    <div class="qbtns">
+      <div class="qcard" onclick="Q('busiest_links')"><h4>🚗 Busiest links</h4><p>Links carrying the most trips.</p><span class="x">events × network</span></div>
+      <div class="qcard" onclick="Q('busiest_intersections')"><h4>✚ Busiest intersections</h4><p>Junctions (deg ≥ 3) by through-traffic.</p><span class="x">network × events</span></div>
+      <div class="qcard" onclick="Q('route_popularity')"><h4>🧭 Route popularity</h4><p>Most frequent link sequences.</p><span class="x">plans / events</span></div>
+      <div class="qcard" onclick="Q('delay_by_class')"><h4>⏱ Delay × road class</h4><p>Realised vs free-flow time by road type.</p><span class="x">events × network</span></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="lab">Result</div><div id="qtitle" class="muted" style="font-size:13px;margin-bottom:6px">Click a query above.</div>
+        <div id="qresult" style="max-height:430px;overflow:auto"></div></div>
+      <div class="card"><div id="map3"></div></div>
+    </div>
+  </div>
+</div>
+<div class="view" id="v6">
+  <h2>6 · Knowledge-graph viewer</h2>
+  <div class="sub">The harmonised data as an abstract node-link graph. Pick a start object (or click a link on the Explore map), set a depth, and expand. Colours: <span style="color:#4f9dff">link</span> · <span style="color:#f0a35e">node</span> · <span style="color:#31c48d">activity</span> · <span style="color:#c58cff">trip</span> · <span style="color:#f2665a">route</span>. Click a node to re-centre.</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="lab">Start object</div>
+      <div class="lab" style="margin-top:14px">Or load a .ttl directly</div>
+      <input type="file" id="ttlFile" accept=".ttl,.turtle" style="font-size:12.5px;color:var(--muted);width:100%">
+      <div class="flex"><select class="inp" id="gcls"><option value="link">link</option><option value="node">node</option><option value="activity">activity</option><option value="trip">trip</option><option value="route">route</option></select>
+        <input class="inp" id="gid" placeholder="id, e.g. 60118" style="flex:1"></div>
+      <div class="flex" style="margin-top:10px"><span class="muted" style="font-size:12px">depth</span>
+        <input type="range" id="gdepth" min="1" max="3" value="2" style="width:90px"><span id="gdlab" class="muted" style="font-size:12px">2</span>
+        <span class="muted" style="font-size:12px">limit</span><input class="inp" id="glim" value="300" style="width:70px">
+        <button class="btn mini" onclick="loadGraph()">Expand</button></div>
+      <div id="gstat" class="muted" style="font-size:12px;margin-top:8px"></div>
+      <div class="note">Tip: on the Explore map, click any link to open its graph neighbourhood.</div>
+    </div>
+    <div class="card"><svg id="gsvg" style="width:100%;height:520px;background:#0e1116;border:1px solid var(--line);border-radius:12px"></svg></div>
+  </div>
+</div>
+<script>
+let JOB=null, BBOX=null, SUM={};
+function go(n){ document.querySelectorAll('.view').forEach((v,i)=>v.classList.toggle('on',i===n));
+  document.querySelectorAll('.step').forEach((s,i)=>{s.classList.toggle('active',i===n); if(i<n)s.classList.add('done');});
+  if(n===1) setTimeout(initAreaMap,60);
+  if(n===3) setTimeout(()=>{ensureMap('map2','m2'); drawExplore();},60);
+  if(n===4) setTimeout(()=>ensureMap('map3','m3'),60);
+}
+document.querySelectorAll('.step').forEach(s=>s.onclick=()=>go(+s.dataset.s));
+[['f-net','d-net'],['f-plan','d-plan'],['f-ev','d-ev']].forEach(([id,d])=>{
+  document.getElementById(id).addEventListener('change',e=>{ if(e.target.files[0]) document.getElementById(d).classList.add('set'); });
+});
+
+// area map
+const MUC={lonMin:11.36,lonMax:11.72,latMin:48.05,latMax:48.25};
+const PRESETS=[['Altstadt / Centre',11.560,11.590,48.130,48.148],['Maxvorstadt',11.555,11.585,48.145,48.160],
+ ['Schwabing',11.575,11.605,48.155,48.180],['Sendling',11.530,11.560,48.108,48.130],['Haidhausen',11.590,11.620,48.125,48.145],['Central (wide)',11.500,11.640,48.100,48.180]];
+let amap,cells=new Set(),rects=[],bboxRect;
+function initAreaMap(){ if(amap){amap.invalidateSize();return;}
+  amap=L.map('map').setView([48.14,11.57],12);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(amap);
+  const g=L.layerGroup().addTo(amap); const NX=8,NY=6,dx=(MUC.lonMax-MUC.lonMin)/NX,dy=(MUC.latMax-MUC.latMin)/NY;
+  for(let i=0;i<NX;i++)for(let j=0;j<NY;j++){ const lo=MUC.lonMin+i*dx,la=MUC.latMin+j*dy;
+    const r=L.rectangle([[la,lo],[la+dy,lo+dx]],{color:'#4f9dff',weight:1,fillOpacity:.03,opacity:.35});
+    r._k=i+'_'+j; r._b=[lo,lo+dx,la,la+dy]; r.on('click',()=>toggle(r)); r.addTo(g); rects.push(r); }
+  document.getElementById('presets').innerHTML=PRESETS.map((p,i)=>`<span class="chip" onclick="preset(${i})">${p[0]}</span>`).join('');
+}
+function toggle(r){ if(cells.has(r._k)){cells.delete(r._k);r.setStyle({fillOpacity:.03,color:'#4f9dff'});}else{cells.add(r._k);r.setStyle({fillOpacity:.28,color:'#31c48d'});}
+  if(!cells.size){setArea(null);return;} let lo=9e9,hi=-9e9,la=9e9,ha=-9e9;
+  rects.forEach(c=>{if(cells.has(c._k)){lo=Math.min(lo,c._b[0]);hi=Math.max(hi,c._b[1]);la=Math.min(la,c._b[2]);ha=Math.max(ha,c._b[3]);}}); setArea([lo,hi,la,ha]); }
+function preset(i){ const p=PRESETS[i]; cells.clear(); rects.forEach(c=>c.setStyle({fillOpacity:.03,color:'#4f9dff'}));
+  setArea([p[1],p[2],p[3],p[4]]); document.querySelectorAll('#presets .chip').forEach((c,k)=>c.classList.toggle('on',k===i));
+  amap.fitBounds([[p[3],p[1]],[p[4],p[2]]],{padding:[20,20]}); rect(); }
+function applyBboxInput(){ const v=document.getElementById('bboxIn').value.split(',').map(Number); if(v.length===4&&v.every(x=>!isNaN(x))){setArea(v);rect();amap.fitBounds([[v[2],v[0]],[v[3],v[1]]],{padding:[20,20]});} }
+function rect(){ if(!amap||!BBOX)return; if(bboxRect)amap.removeLayer(bboxRect); const b=BBOX; bboxRect=L.rectangle([[b[2],b[0]],[b[3],b[1]]],{color:'#f0a35e',weight:2,fill:false}).addTo(amap); }
+function setArea(b){ BBOX=b; const info=document.getElementById('areaInfo');
+  if(b){info.innerHTML='Area: <b>'+b.map(x=>x.toFixed(3)).join(', ')+'</b>'; document.getElementById('bboxIn').value=b.map(x=>+x.toFixed(4)).join(',');}
+  else info.textContent='No area selected — full extent will be used (may be large).'; }
+
+// harmonise -> POST to server
+async function harmonise(){
+  const net=document.getElementById('f-net').files[0];
+  if(!net){ alert('Please provide the network file (step 1).'); go(0); return; }
+  const fd=new FormData(); fd.append('network',net);
+  const pl=document.getElementById('f-plan').files[0]; if(pl)fd.append('plans',pl);
+  const ev=document.getElementById('f-ev').files[0]; if(ev)fd.append('events',ev);
+  if(BBOX) fd.append('bbox',BBOX.join(','));
+  const st=document.getElementById('convStat'), bar=document.getElementById('pbar'), fill=document.getElementById('pfill');
+  st.innerHTML='<span class="spin"></span> uploading + converting on server…'; bar.style.display='block'; fill.style.width='15%';
+  document.getElementById('runConv').disabled=true;
+  try{
+    const xhr=new XMLHttpRequest(); xhr.open('POST','/api/convert');
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable) fill.style.width=(15+70*e.loaded/e.total)+'%'; };
+    const done=new Promise((res,rej)=>{ xhr.onload=()=>res(xhr); xhr.onerror=()=>rej(new Error('network error')); });
+    xhr.send(fd); const x=await done; fill.style.width='100%';
+    const r=JSON.parse(x.responseText);
+    if(x.status!==200){ st.textContent='error: '+(r.error||x.status); document.getElementById('runConv').disabled=false; return; }
+    JOB=r.job; SUM=r.summary;
+    st.textContent='done (job '+JOB+').';
+    const s=r.summary;
+    document.getElementById('convStats').innerHTML=Object.entries(s).map(([k,v])=>`<div class="b"><div class="v">${(+v).toLocaleString()}</div><div class="k">${k}</div></div>`).join('');
+    document.getElementById('dlLinks').innerHTML=r.files.map(f=>`<a class="btn mini ghost" href="/download/${JOB}/${f}">${f}</a>`).join(' ');
+    document.getElementById('convDone').style.display='block';
+  }catch(e){ st.textContent='failed: '+e.message; }
+  document.getElementById('runConv').disabled=false;
+}
+
+// maps
+const MAPS={};
+function ensureMap(div,key){ if(MAPS[key]){MAPS[key].map.invalidateSize();return MAPS[key];}
+  const m=L.map(div).setView([48.14,11.57],13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(m);
+  MAPS[key]={map:m,layer:L.layerGroup().addTo(m)}; return MAPS[key]; }
+async function fetchLayer(name){ if(!JOB)return null; try{ const r=await fetch(`/api/geojson/${JOB}/${name}`); if(!r.ok)return null; return await r.json(); }catch(e){return null;} }
+async function drawExplore(){ const M=ensureMap('map2','m2'); M.layer.clearLayers(); const b=[];
+  if(document.getElementById('lyLinks').checked){ const g=await fetchLayer('links.geojson'); if(g)g.features.forEach(f=>{const c=f.geometry.coordinates;const ll=c.map(p=>[p[1],p[0]]);L.polyline(ll,{color:'#7d8895',weight:2,opacity:.7}).addTo(M.layer);ll.forEach(p=>b.push(p));}); }
+  if(document.getElementById('lyActs').checked){ const g=await fetchLayer('activities.geojson'); if(g)g.features.forEach(f=>{const c=f.geometry.coordinates;L.circleMarker([c[1],c[0]],{radius:4,color:'#31c48d',fillOpacity:.85}).bindPopup(f.properties.type||'').addTo(M.layer);b.push([c[1],c[0]]);}); }
+  if(b.length)M.map.fitBounds(b,{padding:[24,24]});
+  document.getElementById('exploreStats').innerHTML=Object.entries(SUM).filter(([k])=>['links','activities','trips'].includes(k)).map(([k,v])=>`<div class="b"><div class="v">${(+v).toLocaleString()}</div><div class="k">${k}</div></div>`).join('');
+}
+
+// queries -> GET from server
+let QDATA=null;
+async function Q(which){
+  if(!JOB){ alert('Run harmonisation first (step 3).'); go(2); return; }
+  document.getElementById('qtitle').innerHTML='<span class="spin"></span> querying…';
+  if(!QDATA){ const r=await fetch(`/api/queries/${JOB}`); QDATA=await r.json(); }
+  const M=ensureMap('map3','m3'); M.layer.clearLayers();
+  const linksG=await fetchLayer('links.geojson'); const byId={}; if(linksG)linksG.features.forEach(f=>byId[f.properties.id]=f.geometry.coordinates);
+  const base=()=>{ if(linksG)linksG.features.forEach(f=>{const ll=f.geometry.coordinates.map(p=>[p[1],p[0]]);L.polyline(ll,{color:'#333c47',weight:1.2,opacity:.6}).addTo(M.layer);}); };
+  const fit=(b)=>{ if(b.length)M.map.fitBounds(b,{padding:[30,30]}); };
+  if(which==='busiest_links'){ const rows=QDATA.busiest_links;
+    tbl('Busiest links — trips per link (events × network)',['link','road class','trips'],rows.map(r=>[r.link,r.road_class,r.trips]),2);
+    base(); const b=[]; rows.forEach(r=>{const c=byId[r.link];if(c){const ll=c.map(p=>[p[1],p[0]]);L.polyline(ll,{color:'#f2665a',weight:5,opacity:.95}).addTo(M.layer);ll.forEach(p=>b.push(p));}}); fit(b); }
+  else if(which==='busiest_intersections'){ const rows=QDATA.busiest_intersections;
+    tbl('Busiest intersections — junctions (deg ≥ 3) by through-traffic',['node','degree','through-trips'],rows.map(r=>[r.node,r.degree,r.through]),2);
+    base(); const nodesG=await fetchLayer('nodes.geojson'); const nb={}; if(nodesG)nodesG.features.forEach(f=>nb[f.properties.id]=f.geometry.coordinates);
+    const b=[]; rows.forEach(r=>{const c=nb[r.node];if(c){L.circleMarker([c[1],c[0]],{radius:7,color:'#f0a35e',fillOpacity:.9}).bindPopup('node '+r.node+' · '+r.through+' trips').addTo(M.layer);b.push([c[1],c[0]]);}}); fit(b); }
+  else if(which==='route_popularity'){ const rows=QDATA.route_popularity;
+    tbl('Route popularity — identical link sequences',['#','links in route','count'],rows.map((r,i)=>[i+1,r.n_links+' links',r.count]),2); base(); }
+  else if(which==='delay_by_class'){ const rows=QDATA.delay_by_class;
+    tbl('Delay × road class — realised ÷ free-flow, by road type (events × network)',['road class','mean delay factor','traversals'],rows.map(r=>[r.road_class,r.delay_factor+'×',r.n]),1,rows.map(r=>r.delay_factor));
+    const dmap={}; rows.forEach(r=>dmap[r.road_class]=r.delay_factor); const mx=Math.max(...rows.map(r=>r.delay_factor),1);
+    if(linksG)linksG.features.forEach(f=>{const d=dmap[f.properties.klassifizierung||'—'];const t=d?d/mx:0;const col=d?`rgb(${Math.round(60+195*t)},${Math.round(180-150*t)},90)`:'#3a444f';const ll=f.geometry.coordinates.map(p=>[p[1],p[0]]);L.polyline(ll,{color:col,weight:d?3:1.5,opacity:.85}).addTo(M.layer);});
+    const b=[]; if(linksG)linksG.features.forEach(f=>b.push([f.geometry.coordinates[0][1],f.geometry.coordinates[0][0]])); fit(b); }
+}
+function tbl(title,cols,rows,barCol,barVals){
+  document.getElementById('qtitle').innerHTML='<b>'+title+'</b>';
+  const vals=barVals||rows.map(r=>+String(r[barCol]).replace(/[^\d.]/g,'')||0); const mx=Math.max(...vals,1);
+  document.getElementById('qresult').innerHTML='<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>'+
+    rows.map((r,ri)=>'<tr>'+r.map((c,ci)=>ci===barCol?`<td class="barcell"><span class="bar" style="width:${100*vals[ri]/mx}%"></span><span style="position:relative">${c}</span></td>`:`<td>${c}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+}
+// step 5 init
+(function(){ const _go=go; go=function(n){ _go(n); if(n===5) setTimeout(initGraph,60); }; })();
+
+// ===== TEMPORAL =====
+let ACTS=[], TWIN=null, LINKS_CACHE=null;
+const PERIODS=[['Dawn',0,5*3600],['Morning',9*3600,12*3600],['Afternoon',12*3600,14*3600],['Evening',17*3600,20*3600],['Night',21*3600,24*3600]];
+function parseT(str){ if(!str)return null; const p=String(str).split(':').map(Number); if(p.some(isNaN))return null; return ((p[0]||0)*3600+(p[1]||0)*60+(p[2]||0))%86400; }
+function actSpan(f){ const p=f.properties; let s=parseT(p.start_time), e=parseT(p.end_time); if(s==null&&e==null)return null; if(s==null)s=0; if(e==null)e=86399; if(e<s)e=86399; return [s,e]; }
+function activeIn(f,t0,t1){ const sp=actSpan(f); if(!sp)return t1==null; return sp[0]<=t1 && sp[1]>=t0; }
+function fmt(sec){ const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60); return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+function buildTemporal(){
+  const pc=document.getElementById('periodChips'); if(!pc)return;
+  pc.innerHTML=PERIODS.map((p,i)=>`<span class="chip" onclick="setPeriod(${i})">${p[0]}</span>`).join('')+`<span class="chip" onclick="clearTemporal()">All</span>`;
+  const counts=PERIODS.map(p=>ACTS.filter(f=>activeIn(f,p[1],p[2])).length); const mx=Math.max(...counts,1);
+  document.getElementById('tchart').innerHTML='<table style="font-size:12px">'+PERIODS.map((p,i)=>`<tr><td style="width:80px">${p[0]}</td><td class="barcell" style="width:180px"><span class="bar" style="width:${100*counts[i]/mx}%"></span><span style="position:relative">${counts[i]}</span></td></tr>`).join('')+'</table>';
+  const sc=document.getElementById('tscrub'); if(sc&&!sc._w){ sc._w=1; sc.addEventListener('input',()=>{ const t=+sc.value; TWIN=[t,t]; document.getElementById('tclock').textContent=fmt(t)+' · active'; redrawExplore(); }); }
+}
+function setPeriod(i){ const p=PERIODS[i]; TWIN=[p[1],p[2]]; document.getElementById('tclock').textContent=p[0]; document.querySelectorAll('#periodChips .chip').forEach((c,k)=>c.classList.toggle('on',k===i)); redrawExplore(); }
+function clearTemporal(){ TWIN=null; document.getElementById('tclock').textContent='all'; document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.remove('on')); redrawExplore(); }
+function redrawExplore(){ const M=MAPS['m2']; if(!M)return; M.layer.clearLayers(); const b=[];
+  if(document.getElementById('lyLinks').checked && LINKS_CACHE) LINKS_CACHE.forEach(f=>{const ll=f.geometry.coordinates.map(p=>[p[1],p[0]]);const pl=L.polyline(ll,{color:'#7d8895',weight:2,opacity:.7});pl.on('click',()=>openGraphForLink(f.properties.id));pl.addTo(M.layer);});
+  if(document.getElementById('lyActs').checked) ACTS.forEach(f=>{ if(TWIN&&!activeIn(f,TWIN[0],TWIN[1]))return; const c=f.geometry.coordinates; L.circleMarker([c[1],c[0]],{radius:4,color:'#31c48d',fillOpacity:.85}).bindPopup((f.properties.type||'')+' · '+(f.properties.start_time||'?')+'–'+(f.properties.end_time||'?')).addTo(M.layer); b.push([c[1],c[0]]); });
+  if(b.length)M.map.fitBounds(b,{padding:[24,24]});
+}
+// hook into the existing drawExplore: after it runs, cache links+acts and enable temporal
+(function(){ const _de=drawExplore; drawExplore=async function(){
+  const lg=await fetchLayer('links.geojson'); LINKS_CACHE=lg?lg.features:null;
+  const ag=await fetchLayer('activities.geojson'); ACTS=ag?ag.features:[];
+  await _de(); buildTemporal(); redrawExplore();
+}; })();
+
+//GRAPH VIEWER
+function openGraphForLink(id){ document.getElementById('gcls').value='link'; document.getElementById('gid').value=id; go(5); setTimeout(loadGraph,120); }
+function initGraph(){ const ds=document.getElementById('gdepth'); if(ds&&!ds._w){ds._w=1;ds.addEventListener('input',()=>document.getElementById('gdlab').textContent=ds.value);} }
+const GCOL={ast:'#4f9dff',knoten:'#f0a35e',act:'#31c48d',trip:'#c58cff',route:'#f2665a'};
+async function loadGraph(){
+  if(!JOB){ alert('Run harmonisation first.'); return; }
+  const cls=document.getElementById('gcls').value, id=document.getElementById('gid').value.trim();
+  if(!id){ alert('Enter a start id (or click a link on the Explore map).'); return; }
+  const depth=document.getElementById('gdepth').value, lim=document.getElementById('glim').value;
+  document.getElementById('gstat').innerHTML='<span class="spin"></span> expanding…';
+  const r=await fetch(`/api/graph/${JOB}?cls=${cls}&id=${encodeURIComponent(id)}&depth=${depth}&limit=${lim}`);
+  const g=await r.json();
+  if(g.error||!g.nodes||!g.nodes.length){ document.getElementById('gstat').textContent=g.note||g.error||'nothing found'; d3.select('#gsvg').selectAll('*').remove(); return; }
+  document.getElementById('gstat').textContent=g.nodes.length+' nodes · '+g.edges.length+' edges (start '+g.start+')';
+  renderGraph(g);
+}
+function renderGraph(g){
+  const svg=d3.select('#gsvg'); svg.selectAll('*').remove();
+  const W=svg.node().clientWidth||700, H=520;
+  const links=g.edges.map(e=>Object.assign({},e)), nodes=g.nodes.map(n=>Object.assign({},n));
+  const sim=d3.forceSimulation(nodes).force('link',d3.forceLink(links).id(d=>d.id).distance(60))
+    .force('charge',d3.forceManyBody().strength(-160)).force('center',d3.forceCenter(W/2,H/2)).force('collide',d3.forceCollide(14));
+  const link=svg.append('g').attr('stroke','#3a4653').attr('stroke-opacity',.7).selectAll('line').data(links).join('line').attr('stroke-width',1.3);
+  const node=svg.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer')
+    .call(d3.drag().on('start',(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y;}).on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y;}).on('end',(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}))
+    .on('click',(e,d)=>{ const cls={ast:'link',knoten:'node',act:'activity',trip:'trip',route:'route'}[d.cls]||'link'; document.getElementById('gcls').value=cls; document.getElementById('gid').value=d.label; loadGraph(); });
+  node.append('circle').attr('r',d=>d.depth===0?10:7).attr('fill',d=>GCOL[d.cls]||'#888').attr('stroke','#0e1116').attr('stroke-width',1.5);
+  node.append('text').text(d=>d.label).attr('x',10).attr('y',4).attr('fill','#cdd6df').attr('font-size','10px');
+  sim.on('tick',()=>{ link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y); node.attr('transform',d=>`translate(${d.x},${d.y})`); });
+}
+
+// ===== load a .ttl straight into the graph viewer (client-side, N3.js) =====
+(function(){
+  const inp = document.getElementById('ttlFile');
+  if(inp) inp.addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    document.getElementById('gstat').innerHTML = '<span class="spin"></span> parsing '+f.name+'…';
+    const r = new FileReader();
+    r.onload = () => ttlToGraph(r.result);
+    r.readAsText(f);
+  });
+})();
+
+function ttlLocal(uri){ return String(uri).replace(/^.*[\/#]/,''); }   // short name
+function ttlClass(local){                                            // guess class from the local name
+  const s = local.toLowerCase();
+  if(s.startsWith('ast')||s.startsWith('link')) return 'ast';
+  if(s.startsWith('knoten')||s.startsWith('node')||s.startsWith('strasse')) return 'knoten';
+  if(s.startsWith('activity')||s.startsWith('act')) return 'act';
+  if(s.startsWith('fahrt')||s.startsWith('trip')) return 'trip';
+  if(s.startsWith('route')) return 'route';
+  if(s.startsWith('plan')||s.startsWith('version')) return 'route';   // plans-side, reuse a colour
+  if(s.startsWith('person')) return 'trip';
+  return 'ast';
+}
+function ttlToGraph(text){
+  if(typeof N3==='undefined'){ document.getElementById('gstat').textContent='N3.js not loaded — check the <script src=".../n3.min.js"> tag.'; return; }
+  const parser = new N3.Parser();
+  const nodeSet = new Map(); const edges = []; let triples=0, lits=0;
+  const skipPred = new Set([
+    'http://www.opengis.net/ont/geosparql#asWKT',
+    'http://www.opengis.net/ont/geosparql#hasGeometry'   // skip geometry nodes (noise)
+  ]);
+  function add(local){ if(!nodeSet.has(local)) nodeSet.set(local,{id:local,label:local,cls:ttlClass(local),depth:1}); }
+  parser.parse(text, (err,q)=>{
+    if(err){ document.getElementById('gstat').textContent='parse error: '+err.message; return; }
+    if(!q){                                              // END — now render
+      let nodes=[...nodeSet.values()]; const LIM=400;
+      if(nodes.length>LIM){ const keep=new Set(nodes.slice(0,LIM).map(n=>n.id)); nodes=nodes.filter(n=>keep.has(n.id));
+        for(let i=edges.length-1;i>=0;i--) if(!keep.has(edges[i].source)||!keep.has(edges[i].target)) edges.splice(i,1); }
+      document.getElementById('gstat').textContent = nodes.length+' nodes · '+edges.length+' edges  ('+triples+' triples, '+lits+' literals skipped)';
+      if(nodes.length) renderGraph({nodes,edges}); else d3.select('#gsvg').selectAll('*').remove();
+      return;
+    }
+    triples++;
+    if(q.object.termType==='Literal'){ lits++; return; }       // times/scores/WKT
+    if(skipPred.has(q.predicate.value)) return;
+    const s=ttlLocal(q.subject.value), o=ttlLocal(q.object.value), pred=ttlLocal(q.predicate.value);
+    if(pred==='type'){ add(s); return; }                        // rdf:type -> ensure node exists
+    add(s); add(o); edges.push({source:s, target:o});           // resource->resource = edge
+  });
+}
+
+</script>
+</body>
+</html>
