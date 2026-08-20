@@ -18,6 +18,8 @@ import os, gzip, io, json, csv, argparse, time, re
 from lxml import etree
 from pyproj import Transformer
 
+from matsim_to_s4d import convert_all, build_ttl
+
 _tw = Transformer.from_crs("EPSG:31468", "EPSG:4326", always_xy=True)   # -> lon,lat
 def wgs(x, y): lon, lat = _tw.transform(float(x), float(y)); return (round(lon, 7), round(lat, 7))
 def _num(v):
@@ -69,7 +71,7 @@ def convert_network(src, out_dir, bbox):
                            "klassifizierung": at.get("type", ""), "origid": at.get("origid", "")})
                 district.add(lid); kept_nodes.add(frm); kept_nodes.add(to)
         _clear(e)
-    linkw.close()
+    linkw.close();
     nodew = GJ(os.path.join(out_dir, "nodes.geojson"))
     for nid in kept_nodes:
         nodew.add({"type": "Point", "coordinates": list(coords[nid])}, {"id": nid})
@@ -92,7 +94,7 @@ def convert_plans(src, out_dir, bbox, district):
                     x, y = el.get("x"), el.get("y")
                     if x and y:
                         ll = wgs(x, y)
-                        if not bbox or (bbox[0] <= ll[0] <= bbox[1] and bbox[2] <= ll[1] <= bbox[3]):
+                    if not bbox or (bbox[0] <= ll[0] <= bbox[1] and bbox[2] <= ll[1] <= bbox[3]):
                             actw.add({"type": "Point", "coordinates": list(ll)},
                                      {"id": f"{pid}_{pi}_{seq}", "type": el.get("type"), "link_id": el.get("link"),
                                       "start_time":el.get("start_time"), "end_time":el.get("end_time")})

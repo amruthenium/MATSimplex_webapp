@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MATSim Converter — Simplex4Data</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --sidebar:#12161c; --card:#ffffff; --line:#e3e8ee; --ink:#1f2933;
+    --muted:#7b8794; --blue:#1b5fbf; --blue-d:#164a95; --green:#8bc34a; --badge:#eef1f5;
+    --accent:#1b5fbf;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  #shell{display:flex;min-height:100vh}
+  /* sidebar */
+  #side{width:88px;background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:26px;flex-shrink:0}
+  #side .logo{width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:26px solid var(--green);margin-bottom:8px}
+  #side .ic{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8b98a5;cursor:pointer;font-size:20px}
+  #side .ic.active{background:var(--blue);color:#fff}
+  #side .ic:hover{color:#fff}
+  #side .bottom{margin-top:auto;color:#8b98a5;font-size:22px}
+  /* main */
+  #main{flex:1;padding:34px 46px;max-width:1400px}
+  .crumbs{color:var(--blue);font-size:14px;margin-bottom:6px}
+  .crumbs span{color:var(--muted)}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  h1{font-size:34px;margin:.1em 0}
+  .sub{color:var(--muted);font-size:15px;max-width:70ch;line-height:1.5}
+  .meta{text-align:right;color:var(--muted);font-size:13px}
+  .meta .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .meta .badge{background:var(--badge);border-radius:6px;padding:3px 10px;font-weight:600;color:var(--ink);display:inline-block;margin-top:2px}
+  .actions{display:flex;gap:18px;align-items:center}
+  .actions a{color:var(--blue);font-size:14px;text-decoration:none;cursor:pointer;display:flex;align-items:center;gap:5px}
+  /* tabs */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:22px 0 26px}
+  .tab{padding:12px 20px;font-size:15px;color:var(--blue);cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px}
+  .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+  /* buttons */
+  .btn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:12px 22px;font-size:15px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{background:var(--blue-d)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue)}
+  .btn.sm{padding:7px 13px;font-size:13px}
+  /* upload card */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:22px;box-shadow:0 1px 2px rgba(20,30,50,.03)}
+  .panel h3{margin:0 0 4px;font-size:17px}
+  .panel .ph{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+  .drops{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .drop{border:1.5px dashed var(--line);border-radius:10px;padding:16px;background:#fbfcfd}
+  .drop.set{border-color:var(--green);background:#f5faef}
+  .drop h4{margin:0 0 3px;font-size:14px}
+  .drop small{color:var(--muted);font-size:12px}
+  .drop input{margin-top:10px;font-size:12px;width:100%;color:var(--muted)}
+  .params{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+  .params label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em}
+  .params input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;background:#fff}
+  .runrow{display:flex;align-items:center;gap:16px;margin-top:22px}
+  .status{color:var(--muted);font-size:14px}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid #cbd2d9;border-top-color:var(--blue);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .bar{height:8px;background:#eef1f5;border-radius:5px;overflow:hidden;margin-top:14px;display:none}
+  .bar > div{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));transition:width .2s}
+  /* output class cards */
+  .sortbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .sortbar .create{}
+  .classlist{display:flex;flex-direction:column;gap:0}
+  .classcard{display:flex;align-items:center;gap:18px;background:var(--card);border:1px solid var(--line);border-bottom:none;padding:20px 22px;cursor:pointer;transition:.12s}
+  .classcard:first-child{border-radius:12px 12px 0 0}
+  .classcard:last-child{border-bottom:1px solid var(--line);border-radius:0 0 12px 12px}
+  .classcard:hover{background:#fafbfc}
+  .diamond{width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .diamond svg{width:34px;height:34px}
+  .cc-main{flex:1}
+  .cc-main .nm{font-size:19px;font-weight:600}
+  .cc-main .ds{color:var(--muted);font-size:13.5px;margin-top:3px}
+  .cc-main .cols{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px}
+  .colbadge{background:var(--badge);border-radius:5px;padding:2px 8px;font-size:11.5px;color:#52606d}
+  .colbadge.geo{background:#e6f0ff;color:var(--blue)}
+  .cc-meta{text-align:right;min-width:130px}
+  .cc-meta .lab{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .cc-meta .val{background:var(--badge);border-radius:6px;padding:3px 9px;font-size:13px;font-weight:600;display:inline-block;margin-top:2px}
+  .cc-meta .row{display:inline-flex;gap:20px}
+  .chev{color:#cbd2d9;font-size:22px}
+  .empty{color:var(--muted);font-size:15px;padding:40px 0;text-align:center}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="shell">
+  <div id="side">
+    <div class="logo"></div>
+    <div class="ic">⇥</div>
+    <div class="ic active">⬆</div>
+    <div class="ic">🖧</div>
+    <div class="ic">⚙</div>
+    <div class="bottom">»</div>
+  </div>
+
+  <div id="main">
+    <div class="crumbs">Sources <span>›</span> MATSim Munich <span>›</span> MATSim Converter</div>
+    <div class="head">
+      <div>
+        <h1>MATSim Converter</h1>
+        <div class="sub">Import MATSim output (network, plans, events) and reorganise it into harmonised object-class tables. Each output table maps to an S4D object class, with geometry as WKT and scenario/iteration provenance stamped on every row.</div>
+      </div>
+      <div class="meta">
+        <div class="k">Type</div><div class="badge">Preprocess</div>
+        <div style="margin-top:10px"></div>
+        <div class="k">Key</div><div class="badge">MATSIM-1</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-t="convert">⇄ Convert</div>
+      <div class="tab" data-t="tables">▦ Output Tables</div>
+    </div>
+
+    <!-- CONVERT TAB -->
+    <div id="tab-convert">
+      <div class="panel">
+        <h3>Input files</h3>
+        <div class="ph">Upload the three MATSim output files (.xml or .xml.gz). Only the network is required; plans add activities &amp; routes, events add trips.</div>
+        <div class="drops">
+          <div class="drop" id="d-net"><h4>Network</h4><small>output_network.xml.gz</small><input type="file" id="f-net" accept=".xml,.gz"></div>
+          <div class="drop" id="d-plan"><h4>Plans</h4><small>output_plans.xml.gz</small><input type="file" id="f-plan" accept=".xml,.gz"></div>
+          <div class="drop" id="d-ev"><h4>Events</h4><small>output_events.xml.gz</small><input type="file" id="f-ev" accept=".xml,.gz"></div>
+        </div>
+        <div class="params">
+          <div><label>District bbox (optional)</label><input id="bbox" placeholder="11.53,11.56,48.10,48.13"></div>
+          <div><label>Scenario name</label><input id="scenario" placeholder="Munich baseline"></div>
+          <div><label>Iteration</label><input id="iteration" placeholder="0"></div>
+          <div><label>Input version</label><input id="inputv" placeholder="net_v2/pop_v6"></div>
+        </div>
+        <div class="runrow">
+          <button class="btn" id="run" onclick="runConvert()">⇄ Run conversion</button>
+          <span class="status" id="status"></span>
+        </div>
+        <div class="bar" id="bar"><div id="fill"></div></div>
+      </div>
+    </div>
+
+    <!-- TABLES TAB -->
+    <div id="tab-tables" class="hidden">
+      <div class="sortbar">
+        <button class="btn ghost sm">＋ Create object class</button>
+        <div class="status" id="tablesNote">Run a conversion to generate the output tables.</div>
+      </div>
+      <div class="classlist" id="classlist">
+        <div class="empty">No output tables yet — run a conversion on the Convert tab.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// tab switching
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('tab-convert').classList.toggle('hidden', t.dataset.t!=='convert');
+  document.getElementById('tab-tables').classList.toggle('hidden', t.dataset.t!=='tables');
+});
+// file highlight
+[['f-net','d-net'],['f-plan','d-plan'],['f-ev','d-ev']].forEach(([i,d])=>{
+  document.getElementById(i).addEventListener('change',e=>{ if(e.target.files[0]) document.getElementById(d).classList.add('set'); });
+});
+
+// the six output tables -> object-class definitions (name, desc, columns w/ geo flag, key)
+const TABLES = {
+  nodes:      {name:'Node', key:'MATSIM-N', desc:'MATSim network nodes (junctions & endpoints).',
+               cols:[['id',0],['scenario',0],['iteration',0],['input_version',0],['geom','geo']]},
+  links:      {name:'Transport_Links', key:'MATSIM-L', desc:'MATSim network links — straight node-to-node segments with attributes.',
+               cols:[['id',0],['von',0],['nach',0],['laenge',0],['freespeed',0],['kapazitaet',0],['klassifizierung',0],['origid',0],['scenario',0],['iteration',0],['input_version',0],['geom','geo']]},
+  activities: {name:'Activity', key:'MATSIM-A', desc:'Activities from plans — located on links, with start/end times.',
+               cols:[['id',0],['type',0],['link_id',0],['start_time',0],['end_time',0],['scenario',0],['iteration',0],['input_version',0],['geom','geo']]},
+  routes:     {name:'Route', key:'MATSIM-R', desc:'Planned routes — ordered link sequences from plans.',
+               cols:[['id',0],['mode',0],['n_links',0],['link_sequence',0],['scenario',0],['iteration',0],['input_version',0]]},
+  trips:      {name:'Trip', key:'MATSIM-T', desc:'Executed trips reconstructed from the events stream.',
+               cols:[['id',0],['person',0],['mode',0],['dep_s',0],['arr_s',0],['duration_s',0],['n_links',0],['link_sequence',0],['scenario',0],['iteration',0],['input_version',0]]},
+  trip_links: {name:'Trip_Links', key:'MATSIM-TL', desc:'Per-link traversals of each trip with realised times (ordered connection).',
+               cols:[['trip_id',0],['position',0],['link_id',0],['enter_s',0],['leave_s',0],['traveltime_s',0],['scenario',0],['iteration',0],['input_version',0]]},
+};
+const FILE2KEY = {'nodes.csv':'nodes','links.csv':'links','activities.csv':'activities','routes.csv':'routes','trips.csv':'trips','trip_links.csv':'trip_links'};
+const SUMKEY = {nodes:'nodes',links:'links',activities:'activities',routes:'routes',trips:'trips',trip_links:'trip_links'};
+const diamond = `<svg viewBox="0 0 34 34"><rect x="6" y="6" width="22" height="22" transform="rotate(45 17 17)" fill="none" stroke="#1b5fbf" stroke-width="1.6"/></svg>`;
+
+async function runConvert(){
+  const net=document.getElementById('f-net').files[0];
+  if(!net){ alert('Please provide at least the network file.'); return; }
+  const fd=new FormData(); fd.append('network',net);
+  const pl=document.getElementById('f-plan').files[0]; if(pl)fd.append('plans',pl);
+  const ev=document.getElementById('f-ev').files[0]; if(ev)fd.append('events',ev);
+  const bbox=document.getElementById('bbox').value.trim(); if(bbox)fd.append('bbox',bbox);
+  // provenance (passed through; backend forwards to converter)
+  fd.append('scenarioName',document.getElementById('scenario').value.trim());
+  fd.append('iteration',document.getElementById('iteration').value.trim());
+  fd.append('inputVersion',document.getElementById('inputv').value.trim());
+
+  const st=document.getElementById('status'), bar=document.getElementById('bar'), fill=document.getElementById('fill');
+  st.innerHTML='<span class="spin"></span> uploading &amp; converting on server…'; bar.style.display='block'; fill.style.width='12%';
+  document.getElementById('run').disabled=true;
+  try{
+    const xhr=new XMLHttpRequest(); xhr.open('POST','/api/convert');
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable) fill.style.width=(12+70*e.loaded/e.total)+'%'; };
+    const done=new Promise((res,rej)=>{ xhr.onload=()=>res(xhr); xhr.onerror=()=>rej(new Error('network error')); });
+    xhr.send(fd); const x=await done; fill.style.width='100%';
+    const r=JSON.parse(x.responseText);
+    if(x.status!==200){ st.textContent='error: '+(r.error||x.status); document.getElementById('run').disabled=false; return; }
+    st.textContent='Conversion complete — job '+r.job+'. See Output Tables.';
+    renderTables(r);
+    // jump to tables tab
+    document.querySelector('.tab[data-t="tables"]').click();
+  }catch(e){ st.textContent='failed: '+e.message; }
+  document.getElementById('run').disabled=false;
+}
+
+function renderTables(r){
+  const sum=r.summary||{}; const files=r.files||[];
+  const present = new Set(files.map(f=>FILE2KEY[f]).filter(Boolean));
+  const order=['nodes','links','activities','routes','trips','trip_links'];
+  const list=document.getElementById('classlist');
+  const rows = order.filter(k=>present.has(k) || sum[SUMKEY[k]]!=null);
+  if(!rows.length){ list.innerHTML='<div class="empty">No tables were produced.</div>'; return; }
+  document.getElementById('tablesNote').textContent = rows.length+' object classes generated from this conversion.';
+  list.innerHTML = rows.map(k=>{
+    const t=TABLES[k]; const count = sum[SUMKEY[k]];
+    const cols = t.cols.map(([c,g])=>`<span class="colbadge ${g==='geo'?'geo':''}">${c}${g==='geo'?' · geo':''}</span>`).join('');
+    return `<div class="classcard" onclick="dl('${r.job}','${k}.csv')">
+      <div class="diamond">${diamond}</div>
+      <div class="cc-main">
+        <div class="nm">${t.name}</div>
+        <div class="ds">${t.desc}</div>
+        <div class="cols">${cols}</div>
+      </div>
+      <div class="cc-meta">
+        <div class="row">
+          <div><div class="lab">Rows</div><div class="val">${count!=null?Number(count).toLocaleString():'—'}</div></div>
+          <div><div class="lab">Type</div><div class="val">Table</div></div>
+        </div>
+      </div>
+      <div class="chev">›</div>
+    </div>`;
+  }).join('');
+}
+function dl(job,name){ window.location='/download/'+job+'/'+name; }
+</script>
+</body>
+</html>
