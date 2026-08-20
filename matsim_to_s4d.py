@@ -18,8 +18,6 @@ import os, gzip, io, json, csv, argparse, time, re
 from lxml import etree
 from pyproj import Transformer
 
-from matsim_to_s4d import convert_all, build_ttl
-
 _tw = Transformer.from_crs("EPSG:31468", "EPSG:4326", always_xy=True)   # -> lon,lat
 def wgs(x, y): lon, lat = _tw.transform(float(x), float(y)); return (round(lon, 7), round(lat, 7))
 def _num(v):
