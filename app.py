@@ -76,9 +76,9 @@ def graph(job):
     depth = int(request.args.get("depth", 2)); limit = int (request.args.get("limit", 300))
     return jsonify(pipeline.build_graph_view(outdir, cls, gid, depth=depth, limit=limit))
 
-@app.route("/matsim-converter")
+@app.route("/matsims4d_converter")
 def matsim_converter():
-      return render_template("matsim_converter.html")
+      return render_template("matsims4d_converter.html")
 
 @app.route("/api/geojson/<job>/<name>")
 def geojson(job, name):
