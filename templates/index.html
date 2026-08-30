@@ -146,10 +146,22 @@
       <div class="qcard" onclick="Q('route_popularity')"><h4>🧭 Route popularity</h4><p>Most frequent link sequences.</p><span class="x">plans / events</span></div>
       <div class="qcard" onclick="Q('delay_by_class')"><h4>⏱ Delay × road class</h4><p>Realised vs free-flow time by road type.</p><span class="x">events × network</span></div>
     </div>
-    <div class="grid2">
+    <div class="grid3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start">
       <div class="card"><div class="lab">Result</div><div id="qtitle" class="muted" style="font-size:13px;margin-bottom:6px">Click a query above.</div>
         <div id="qresult" style="max-height:430px;overflow:auto"></div></div>
-      <div class="card"><div id="map3"></div></div>
+      <div class="card"><div id="map3" style="height:430px"></div></div>
+      <div class="card">
+        <div class="lab">SPARQL</div>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">Query the graph directly. Load hints for real classes &amp; predicates; click a chip to insert.</div>
+        <input id="endpoint" style="width:100%;padding:7px;border:1px solid var(--line,#e3e8ee);border-radius:6px;font-size:12px;margin-bottom:6px"
+          value="http://localhost:7200/repositories/matsim" placeholder="GraphDB endpoint">
+        <button class="btn ghost sm" onclick="loadSparqlHints()" style="margin-bottom:8px">↻ Load hints</button>
+        <div id="shints" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;max-height:120px;overflow:auto"></div>
+        <textarea id="sparql" rows="5" style="width:100%;font-family:monospace;font-size:12px;padding:8px;border:1px solid var(--line,#e3e8ee);border-radius:7px"
+          placeholder="SELECT ?s ?p ?o WHERE { ?s a twis:Ast . ?s ?p ?o } LIMIT 20"></textarea>
+        <button class="btn" onclick="runSparql()" style="margin-top:8px">Run SPARQL</button>
+        <div id="sparqlout" style="margin-top:10px;overflow:auto;max-height:220px;font-size:12px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -397,8 +409,73 @@ function ttlToGraph(text){
     if(pred==='type'){ add(s); return; }                        // rdf:type -> ensure node exists
     add(s); add(o); edges.push({source:s, target:o});           // resource->resource = edge
   });
+} 
+
+</script>
+<script>
+function ep(){ return document.getElementById('endpoint').value.trim(); }
+
+async function sparql(query){
+  const r = await fetch(ep(), {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/sparql-results+json'},
+    body:'query='+encodeURIComponent(query)
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status+' (endpoint reachable? CORS enabled?)');
+  return r.json();
+}
+const short = iri => iri.split(/[\/#]/).pop();
+
+async function loadSparqlHints(){
+  const box=document.getElementById('shints'); box.innerHTML='loading…';
+  try{
+    const cq=`SELECT ?cls (COUNT(?s) AS ?n) (SAMPLE(?s) AS ?ex) WHERE { ?s a ?cls } GROUP BY ?cls ORDER BY DESC(?n)`;
+    const cr=await sparql(cq);
+    box.innerHTML='';
+    for(const b of cr.results.bindings){
+      const cls=b.cls.value, n=b.n.value, ex=b.ex.value;
+      const hdr=document.createElement('div');
+      hdr.style="width:100%;font-weight:600;font-size:12px;color:#52606d;margin-top:6px";
+      hdr.textContent=`${short(cls)} (${n})`;
+      box.appendChild(hdr);
+      addChip(box, short(cls), 'twis:'+short(cls), 'class');
+      addChip(box, 'e.g. '+short(ex), '<'+ex+'>', 'sample IRI');
+      const pq=`SELECT DISTINCT ?p WHERE { ?s a <${cls}> . ?s ?p ?o } LIMIT 12`;
+      const pr=await sparql(pq);
+      for(const pb of pr.results.bindings){
+        const p=pb.p.value;
+        addChip(box, short(p), short(p)==='type'?'a':'<'+p+'>', 'predicate');
+      }
+    }
+  }catch(e){ box.innerHTML='could not load hints: '+e.message; }
 }
 
+function addChip(box, label, insert, kind){
+  const c=document.createElement('button');
+  c.className='btn ghost sm'; c.style="font-family:monospace;font-size:11.5px";
+  c.title=kind+': '+insert; c.textContent=label;
+  c.onclick=()=>insertAt(document.getElementById('sparql'), insert+' ');
+  box.appendChild(c);
+}
+function insertAt(ta, text){
+  const s=ta.selectionStart, e=ta.selectionEnd;
+  ta.value=ta.value.slice(0,s)+text+ta.value.slice(e);
+  ta.focus(); ta.selectionStart=ta.selectionEnd=s+text.length;
+}
+
+async function runSparql(){
+  const out=document.getElementById('sparqlout'); out.textContent='running…';
+  const prefixes=`PREFIX twis: <https://w3id.org/twis#> \nPREFIX mun:  <https://example.org/matsim/munich/>\nPREFIX geo: <http://www.opengis.net/ont/geosparql#>\nPREFIX sf: <http://www.opengis.net/ont/sf#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>`;
+  try{
+    const res=await sparql(prefixes+document.getElementById('sparql').value);
+    const vars=res.head.vars, rows=res.results.bindings;
+    out.innerHTML='<table style="border-collapse:collapse;font-size:12px"><thead><tr>'+
+      vars.map(v=>`<th style="border:1px solid #e3e8ee;padding:4px 8px;background:#f4f6f8">${v}</th>`).join('')+
+      '</tr></thead><tbody>'+
+      rows.map(r=>'<tr>'+vars.map(v=>`<td style="border:1px solid #e3e8ee;padding:4px 8px">${r[v]?r[v].value:''}</td>`).join('')+'</tr>').join('')+
+      '</tbody></table>'+`<div style="color:#7b8794;font-size:12px;margin-top:6px">${rows.length} rows</div>`;
+  }catch(e){ out.textContent='failed: '+e.message; }
+}
 </script>
 </body>
 </html>
