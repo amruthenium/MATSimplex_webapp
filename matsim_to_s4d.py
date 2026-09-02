@@ -41,10 +41,12 @@ class GJ:
     def close(self):
         self.f.write("]}"); self.f.close()
 class CW:
-    def __init__(self, path, cols):
+    def __init__(self, path, cols, meta=None):
+        self.meta = meta or {}
         self.f = open(path, "w", newline=""); self.w = csv.DictWriter(self.f, fieldnames=cols); self.w.writeheader(); self.cols = cols; self.n = 0
     def add(self, row):
-        self.w.writerow({k: ("" if row.get(k) is None else row.get(k)) for k in self.cols}); self.n += 1
+        r = {k: ("" if row.get(k) is None else row.get(k)) for k in self.cols}
+        r.update(self.meta); self.w.writerow(r); self.n += 1
     def close(self):
         self.f.close()
 
