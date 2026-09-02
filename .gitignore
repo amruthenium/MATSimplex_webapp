@@ -2,5 +2,9 @@ venv/
 __pycache__/
 uploads/*
 outputs/*
+eval_out/*
+eval_table.csv
+eval_table.md
 !uploads/.gitkeep
 !outputs/.gitkeep
+!eval_out/.gitkeep
