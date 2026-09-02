@@ -168,8 +168,17 @@ def convert_events(src, out_dir, district):
     return tripw.n, tlw.n
 
 # ---- orchestrator: network first (district set) -> plans -> events ----
-def convert_all(network=None, plans=None, events=None, out_dir=".", bbox=None):
+def convert_all(network=None, plans=None, events=None, out_dir=".", bbox=None, scenario_name=None, iteration=None, version=None, CRS=None, encoding=None):
     os.makedirs(out_dir, exist_ok=True)
+    meta = {}
+    if iteration is not None:
+        meta["iteration"] = iteration
+    if version is not None:
+        meta["version"] = version
+    if CRS is not None:
+        meta["CRS"] = CRS
+    if encoding is not None:
+        meta["encoding"] = encoding
     summary = {}; district = set()
     if network:
         n, l, district = convert_network(network, out_dir, bbox)
@@ -186,10 +195,11 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--network"); ap.add_argument("--plans"); ap.add_argument("--events")
     ap.add_argument("--out-dir", default="."); ap.add_argument("--bbox", help="LON_MIN,LON_MAX,LAT_MIN,LAT_MAX")
+    ap.add_argument("--scenario-name"); ap.add_argument("--iteration"); ap.add_argument("--version"); ap.add_argument("--CRS"); ap.add_argument("--encoding")
     a = ap.parse_args()
     if not any([a.network, a.plans, a.events]):
         ap.error("give at least one of --network/--plans/--events")
     bbox = tuple(float(v) for v in a.bbox.split(",")) if a.bbox else None
     t0 = time.time()
-    s = convert_all(a.network, a.plans, a.events, a.out_dir, bbox)
+    s = convert_all(a.network, a.plans, a.events, a.out_dir, bbox, a.scenario_name, a.iteration, a.version, a.CRS, a.encoding)
     print("summary:", s, f"({time.time()-t0:.1f}s) -> {a.out_dir}")
