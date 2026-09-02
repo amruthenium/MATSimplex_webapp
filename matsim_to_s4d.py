@@ -50,6 +50,17 @@ class CW:
     def close(self):
         self.f.close()
 
+class CWKT:
+    def __init__(self, path, cols, meta=None):
+        self.meta = meta or {}; self.metavals = list(self.meta.values())
+        self.f = open(path, "w", newline=""); self.w = csv.DictWriter(self.f)
+        self.cols = cols; self.w.writerow(cols+ list(self.meta.keys()) +["geom"]); self.n = 0
+    def add(self, row, wkt):
+        self.w.writerow([("" if row.get(c) is None else row.get(c)) for c in self.cols]
+                        + self.metavals + [wkt]); self.n += 1
+    def close(self):
+        self.f.close()
+
 # ---- network: single streaming pass; build district link-set; write nodes/links ----
 def convert_network(src, out_dir, bbox):
     coords = {}; district = set(); kept_nodes = set()
