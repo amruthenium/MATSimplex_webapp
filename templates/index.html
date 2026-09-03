@@ -8,6 +8,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/d3@7"></script>
 <script src="https://unpkg.com/n3@1.17.2/browser/n3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 <style>
   :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c232d;--line:#2a3441;--ink:#e6edf3;--muted:#8b98a5;--accent:#4f9dff;--accent2:#31c48d;--warn:#f0a35e;--red:#f2665a;--chip:#233043;}
   *{box-sizing:border-box}
@@ -414,6 +415,14 @@ function ttlToGraph(text){
 </script>
 <script>
 function ep(){ return document.getElementById('endpoint').value.trim(); }
+
+// GK4 (EPSG:31468) -> WGS84, for reprojecting the graph's node coordinates
+proj4.defs("EPSG:31468","+proj=tmerc +lat_0=0 +lon_0=12 +k=1 +x_0=4500000 +y_0=0 +ellps=bessel +datum=potsdam +units=m +no_defs");
+function gk4toWGS(x, y){
+  const [lon, lat] = proj4("EPSG:31468", "WGS84", [x, y]);
+  return [lat, lon];   // Leaflet wants [lat, lon]
+}
+
 
 async function sparql(query){
   const r = await fetch('/api/sparql', {
