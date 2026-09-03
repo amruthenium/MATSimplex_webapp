@@ -418,10 +418,10 @@ function ep(){ return document.getElementById('endpoint').value.trim(); }
 async function sparql(query){
   const r = await fetch('/api/sparql', {
     method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/sparql-results+json'},
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:'query='+encodeURIComponent(query)
   });
-  if(!r.ok) throw new Error('HTTP '+r.status+' (endpoint reachable? CORS enabled?)');
+  if(!r.ok){ const t = await r.text(); throw new Error('HTTP '+r.status+': '+t); }
   return r.json();
 }
 const short = iri => iri.split(/[\/#]/).pop();
