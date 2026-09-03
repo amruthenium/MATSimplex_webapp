@@ -472,6 +472,37 @@ function insertAt(ta, text){
   ta.focus(); ta.selectionStart=ta.selectionEnd=s+text.length;
 }
 
+async function reconstructOnMap(){
+  const query = `
+PREFIX twis: <https://w3id.org/twis#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?link ?fwkt ?twkt WHERE {
+  ?link a twis:Link ;
+        twis:fromNode ?from ;
+        twis:toNode ?to .
+  ?from geo:hasGeometry/geo:asWKT ?fwkt .
+  ?to   geo:hasGeometry/geo:asWKT ?twkt .
+  FILTER(regex(str(?fwkt), "POINT\\\\(4[0-9]{6}"))
+  FILTER(regex(str(?twkt), "POINT\\\\(4[0-9]{6}"))
+} LIMIT 2000`;
+
+  const res = await sparql(query);          // reuse your existing async sparql()
+  const lines = [];
+  const pt = /POINT\(([0-9.]+) ([0-9.]+)\)/;   // pull x y out of "POINT(x y)"
+  for(const b of res.results.bindings){
+    const f = b.fwkt.value.match(pt), t = b.twkt.value.match(pt);
+    if(!f || !t) continue;
+    const a = gk4toWGS(+f[1], +f[2]);        // GK4 -> [lat, lon]
+    const z = gk4toWGS(+t[1], +t[2]);
+    lines.push([a, z]);
+  }
+  // draw — REPLACE `map3` with your actual Leaflet map variable:
+  if(window._reconLayer) map3.removeLayer(window._reconLayer);
+  window._reconLayer = L.polyline(lines, { color:"#1b5fbf", weight:1.5 }).addTo(amap);
+  if(lines.length) amap.fitBounds(window._reconLayer.getBounds());
+  return lines.length;
+}
+
 async function runSparql(){
   const out=document.getElementById('sparqlout'); out.textContent='running…';
   const prefixes=`PREFIX twis: <https://w3id.org/twis#> \nPREFIX mun:  <https://example.org/matsim/munich/>\nPREFIX geo: <http://www.opengis.net/ont/geosparql#>\nPREFIX sf: <http://www.opengis.net/ont/sf#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>`;
