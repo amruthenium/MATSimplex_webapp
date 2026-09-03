@@ -416,7 +416,7 @@ function ttlToGraph(text){
 function ep(){ return document.getElementById('endpoint').value.trim(); }
 
 async function sparql(query){
-  const r = await fetch(ep(), {
+  const r = await fetch('/api/sparql', {
     method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/sparql-results+json'},
     body:'query='+encodeURIComponent(query)
