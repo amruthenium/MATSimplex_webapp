@@ -161,6 +161,7 @@
         <textarea id="sparql" rows="5" style="width:100%;font-family:monospace;font-size:12px;padding:8px;border:1px solid var(--line,#e3e8ee);border-radius:7px"
           placeholder="SELECT ?s ?p ?o WHERE { ?s a twis:Ast . ?s ?p ?o } LIMIT 20"></textarea>
         <button class="btn" onclick="runSparql()" style="margin-top:8px">Run SPARQL</button>
+        <button class="btn ghost sm" onclick="reconstructOnMap().then(n=>alert(n+' links drawn'))">Reconstruct links on map</button>
         <div id="sparqlout" style="margin-top:10px;overflow:auto;max-height:220px;font-size:12px"></div>
       </div>
     </div>
@@ -497,7 +498,7 @@ SELECT ?link ?fwkt ?twkt WHERE {
     lines.push([a, z]);
   }
   // draw — REPLACE `map3` with your actual Leaflet map variable:
-  if(window._reconLayer) map3.removeLayer(window._reconLayer);
+  if(window._reconLayer) amap.removeLayer(window._reconLayer);
   window._reconLayer = L.polyline(lines, { color:"#1b5fbf", weight:1.5 }).addTo(amap);
   if(lines.length) amap.fitBounds(window._reconLayer.getBounds());
   return lines.length;
