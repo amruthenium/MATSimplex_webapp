@@ -73,14 +73,22 @@ def queries(job):
 
 @app.route("/api/sparql", methods=["POST"])
 def api_sparql():
-    query = request.form.get("query", "") or request.get_data(as_text=True)
-    r = requests.post(
-        GRAPHDB,
-        data={"query": query},
-        headers={"Accept": "application/sparql-results+json"},
-        timeout=120,
-    )
-    return (r.text, r.status_code, {"Content-Type": "application/sparql-results+json"})
+    # accept the query whether sent as form field, raw body, or JSON
+    query = (request.form.get("query")
+             or (request.get_json(silent=True) or {}).get("query")
+             or request.get_data(as_text=True))
+    if not query or not query.strip():
+        return ("no query received", 400)
+    try:
+        r = requests.post(
+            GRAPHDB,
+            data={"query": query},
+            headers={"Accept": "application/sparql-results+json"},
+            timeout=120,
+        )
+        return (r.text, r.status_code, {"Content-Type": "application/sparql-results+json"})
+    except Exception as e:
+        return (f"proxy error: {e}", 502)
 
 @app.route("/api/graph/<job>")
 def graph(job):
