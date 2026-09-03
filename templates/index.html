@@ -498,9 +498,9 @@ SELECT ?link ?fwkt ?twkt WHERE {
     lines.push([a, z]);
   }
   // draw — REPLACE `map3` with your actual Leaflet map variable:
-  if(window._reconLayer) amap.removeLayer(window._reconLayer);
-  window._reconLayer = L.polyline(lines, { color:"#1b5fbf", weight:1.5 }).addTo(amap);
-  if(lines.length) amap.fitBounds(window._reconLayer.getBounds());
+  if(window._reconLayer) map3.removeLayer(window._reconLayer);
+  window._reconLayer = L.polyline(lines, { color:"#1b5fbf", weight:1.5 }).addTo(map3);
+  if(lines.length) map3.fitBounds(window._reconLayer.getBounds());
   return lines.length;
 }
 
