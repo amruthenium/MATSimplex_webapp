@@ -14,17 +14,6 @@ import requests
 
 GRAPHDB = "http://desktop-vv1d89v:7200/repositories/MATSim_events"
 
-@app.route("/api/sparql", methods=["POST"])
-def api_sparql():
-    query = request.form.get("query", "") or request.get_data(as_text=True)
-    r = requests.post(
-        GRAPHDB,
-        data={"query": query},
-        headers={"Accept": "application/sparql-results+json"},
-        timeout=120,
-    )
-    return (r.text, r.status_code, {"Content-Type": "application/sparql-results+json"})
-
 BASE = os.path.dirname(os.path.abspath(__file__))
 UPLOADS = os.path.join(BASE, "uploads")
 OUTPUTS = os.path.join(BASE, "outputs")
@@ -81,6 +70,17 @@ def queries(job):
     if not os.path.isdir(outdir):
         return jsonify(error="unknown job"), 404
     return jsonify(pipeline.run_queries(outdir))
+
+@app.route("/api/sparql", methods=["POST"])
+def api_sparql():
+    query = request.form.get("query", "") or request.get_data(as_text=True)
+    r = requests.post(
+        GRAPHDB,
+        data={"query": query},
+        headers={"Accept": "application/sparql-results+json"},
+        timeout=120,
+    )
+    return (r.text, r.status_code, {"Content-Type": "application/sparql-results+json"})
 
 @app.route("/api/graph/<job>")
 def graph(job):
